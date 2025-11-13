@@ -78,10 +78,8 @@ trigger:
 action:
   - choose:
       - conditions:
-          - condition: numeric_state
-            entity_id: sun.sun
-            attribute: elevation
-            below: "{{ twilight_elevation }}"
+          - condition: template
+            value_template: "{{ state_attr('sun.sun', 'elevation') | float < twilight_elevation | float }}"
         sequence:
           - service: light.turn_on
             target:
