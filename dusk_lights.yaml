@@ -23,15 +23,6 @@ blueprint:
       selector:
         entity:
           domain: sensor
-    low_threshold:
-      name: Low Threshold
-      description: Value below which dim brightness is used
-      default: -6
-      selector:
-        number:
-          min: -100
-          max: 100
-          step: 1
     dim_brightness:
       name: Dim Brightness (%)
       default: 5
@@ -67,15 +58,14 @@ blueprint:
         number:
           min: -30
           max: 20
-          step: 0.1
+          step: 1
 
 variables:
   twilight_elevation: >
-    {% set mode = iif(input.twilight_mode, input.twilight_mode, 'civil (-6°)') %}
-    {% if 'civil' in mode %}-6
-    {% elif 'nautical' in mode %}-12
-    {% elif 'astronomical' in mode %}-18
-    {% elif 'custom' in mode %}{{ input.custom_elevation }}
+    {% if 'civil' in input.twilight_mode %}-6
+    {% elif 'nautical' in input.twilight_mode %}-12
+    {% elif 'astronomical' in input.twilight_mode %}-18
+    {% elif 'custom' in input.twilight_mode %}{{ input.custom_elevation }}
     {% endif %}
 
 trigger:
@@ -85,18 +75,13 @@ trigger:
     type: press
     subtype: Up
 
-condition:
-  - condition: numeric_state
-    entity_id: sun.sun
-    attribute: elevation
-    below: "{{ twilight_elevation }}"
-
 action:
   - choose:
       - conditions:
           - condition: numeric_state
-            entity_id: !input sensor_entity
-            below: !input low_threshold
+            entity_id: sun.sun
+            attribute: elevation
+            below: "{{ twilight_elevation }}"
         sequence:
           - service: light.turn_on
             target:
