@@ -2,7 +2,7 @@ blueprint:
   name: Light Brightness From Sun Elevation
   description: >
     When a Zigbee/ZHA switch button is pressed, set a light's brightness based on a sensor value
-    and only if the sun is below a selected dusk boundary or a custom elevation.
+    and only if the sun is below a selected twilight boundary or a custom elevation.
   domain: automation
   input:
     switch_device:
@@ -48,36 +48,34 @@ blueprint:
           min: 1
           max: 100
           step: 1
-    dusk_mode:
-      name: Dusk Mode
-      description: Select dusk type or custom elevation
+    twilight_mode:
+      name: Twilight Mode
+      description: Select twilight type or custom elevation
       default: civil
       selector:
         select:
           options:
-            - civil
-            - nautical
-            - astronomical
-            - night
-            - custom
+            - "civil (-6°)"
+            - "nautical (-12°)"
+            - "astronomical (-18°)"
+            - "custom"
     custom_elevation:
       name: Custom Elevation (degrees)
-      description: Used only if dusk_mode = custom
+      description: Used only if twilight_mode = custom
       default: -6
       selector:
         number:
-          min: -90
-          max: 0
+          min: -30
+          max: 20
           step: 0.1
 
 variables:
-  dusk_elevation: >
-    {% set mode = dusk_mode %}
-    {% if mode == 'civil' %}-6
-    {% elif mode == 'nautical' %}-12
-    {% elif mode == 'astronomical' %}-18
-    {% elif mode == 'night' %}-90
-    {% elif mode == 'custom' %}{{ custom_elevation }}
+  twilight_elevation: >
+    {% set mode = iif(input.twilight_mode, input.twilight_mode, 'civil (-6°)') %}
+    {% if 'civil' in mode %}-6
+    {% elif 'nautical' in mode %}-12
+    {% elif 'astronomical' in mode %}-18
+    {% elif 'custom' in mode %}{{ input.custom_elevation }}
     {% endif %}
 
 trigger:
@@ -91,7 +89,7 @@ condition:
   - condition: numeric_state
     entity_id: sun.sun
     attribute: elevation
-    below: "{{ dusk_elevation }}"
+    below: "{{ twilight_elevation }}"
 
 action:
   - choose:
@@ -105,9 +103,11 @@ action:
               entity_id: !input light_entity
             data:
               brightness_pct: !input dim_brightness
-        default:
-          - service: light.turn_on
-            target:
-              entity_id: !input light_entity
-            data:
-              brightness_pct: !input full_brightness
+    default:
+      - service: light.turn_on
+        target:
+          entity_id: !input light_entity
+        data:
+          brightness_pct: !input full_brightness
+
+mode: single
